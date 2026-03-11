@@ -9,6 +9,8 @@ serve it without writing temp files to disk.
 import re
 import base64
 import logging
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from dataclasses import dataclass, field
 from typing import Optional
 from graphviz import Digraph
@@ -317,3 +319,187 @@ def generate_erd_base64(sql_text: str, title: str = "Entity Relationship Diagram
             "relationship_count": len(foreign_keys),
             "error": f"Graphviz render failed: {str(e)}. Make sure Graphviz is installed: https://graphviz.org/download/",
         }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# draw.io XML Generator
+# ──────────────────────────────────────────────────────────────────────────────
+
+def generate_erd_xml(sql_text: str, title: str = "Entity Relationship Diagram") -> dict:
+    """
+    Parse DDL SQL and return a draw.io-compatible XML string.
+    The XML can be imported directly into draw.io / diagrams.net via
+    Extras → Edit Diagram or File → Import.
+    """
+    parser = DDLParser()
+
+    try:
+        tables, foreign_keys = parser.parse(sql_text)
+    except Exception as e:
+        logger.error("DDL parse error: %s", e)
+        return {"xml": None, "table_count": 0, "relationship_count": 0, "error": str(e)}
+
+    if not tables:
+        return {
+            "xml": None,
+            "table_count": 0,
+            "relationship_count": 0,
+            "error": "No tables found in SQL. Make sure the input contains CREATE TABLE statements.",
+        }
+
+    # Layout constants
+    TABLE_WIDTH = 280
+    COL_HEIGHT = 30
+    HEADER_HEIGHT = 40
+    H_GAP = 60
+    V_GAP = 40
+    COLS_PER_ROW = 3
+
+    # ── Build draw.io XML tree ────────────────────────────────────────────────
+    root = ET.Element("mxGraphModel")
+    root.set("dx", "1422")
+    root.set("dy", "762")
+    root.set("grid", "1")
+    root.set("gridSize", "10")
+    root.set("guides", "1")
+    root.set("tooltips", "1")
+    root.set("connect", "1")
+    root.set("arrows", "1")
+    root.set("fold", "1")
+    root.set("page", "1")
+    root.set("pageScale", "1")
+    root.set("pageWidth", "1169")
+    root.set("pageHeight", "827")
+    root.set("math", "0")
+    root.set("shadow", "0")
+
+    parent = ET.SubElement(root, "root")
+
+    # Required sentinel cells
+    ET.SubElement(parent, "mxCell", id="0")
+    ET.SubElement(parent, "mxCell", id="1", parent="0")
+
+    cell_id = 2  # incrementing cell ID
+    table_cell_ids: dict[str, int] = {}   # table_name → header cell id
+    col_cell_ids: dict[tuple, int] = {}    # (table, col) → cell id
+
+    table_list = list(tables.values())
+
+    for idx, table in enumerate(table_list):
+        row = idx // COLS_PER_ROW
+        col_pos = idx % COLS_PER_ROW
+        x = col_pos * (TABLE_WIDTH + H_GAP)
+        y = row * (HEADER_HEIGHT + len(table.columns) * COL_HEIGHT + V_GAP)
+
+        # ── Table header ──────────────────────────────────────────────────────
+        header_id = cell_id
+        table_cell_ids[table.name] = header_id
+        cell_id += 1
+
+        header_cell = ET.SubElement(parent, "mxCell")
+        header_cell.set("id", str(header_id))
+        header_cell.set("value", table.name)
+        header_cell.set("style",
+            "shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;"
+            "fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;"
+            "fillColor=#1e2d4a;fontColor=#4f8ef7;strokeColor=#4f8ef7;fontSize=13;"
+        )
+        header_cell.set("vertex", "1")
+        header_cell.set("parent", "1")
+        geo = ET.SubElement(header_cell, "mxGeometry")
+        geo.set("x", str(x))
+        geo.set("y", str(y))
+        geo.set("width", str(TABLE_WIDTH))
+        geo.set("height", str(HEADER_HEIGHT + len(table.columns) * COL_HEIGHT))
+        geo.set("as", "geometry")
+
+        # ── Column rows ───────────────────────────────────────────────────────
+        for col in table.columns:
+            col_id = cell_id
+            col_cell_ids[(table.name, col.name)] = col_id
+            cell_id += 1
+
+            # Build label with icons
+            if col.is_primary_key:
+                prefix = "PK  "
+            elif col.is_foreign_key:
+                prefix = "FK  "
+            else:
+                prefix = "        "
+
+            nullable_str = "" if col.is_nullable else " NOT NULL"
+            unique_str = " UNIQUE" if col.is_unique else ""
+            label = f"{prefix}{col.name}    {col.data_type}{nullable_str}{unique_str}"
+
+            if col.is_primary_key:
+                fill = "#162032"
+                font_color = "#4f8ef7"
+                font_style = "1"  # bold
+            elif col.is_foreign_key:
+                fill = "#0d1520"
+                font_color = "#a78bfa"
+                font_style = "0"
+            else:
+                fill = "#0d1520"
+                font_color = "#e2e8f0"
+                font_style = "0"
+
+            col_cell = ET.SubElement(parent, "mxCell")
+            col_cell.set("id", str(col_id))
+            col_cell.set("value", label)
+            col_cell.set(
+                "style",
+                f"shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;"
+                f"fillColor={fill};collapsible=0;dropTarget=0;align=left;spacingLeft=8;"
+                f"fontColor={font_color};strokeColor=#232840;fontSize=11;"
+                f"fontStyle={font_style};fontFamily=Courier New;",
+            )
+            col_cell.set("vertex", "1")
+            col_cell.set("parent", str(header_id))
+            col_geo = ET.SubElement(col_cell, "mxGeometry")
+            col_geo.set("y", str(HEADER_HEIGHT + table.columns.index(col) * COL_HEIGHT))
+            col_geo.set("width", str(TABLE_WIDTH))
+            col_geo.set("height", str(COL_HEIGHT))
+            col_geo.set("as", "geometry")
+
+    # ── Foreign key edges ─────────────────────────────────────────────────────
+    for fk in foreign_keys:
+        if fk.from_table not in tables or fk.to_table not in tables:
+            continue
+
+        src_id = col_cell_ids.get((fk.from_table, fk.from_col),
+                                  table_cell_ids.get(fk.from_table))
+        tgt_id = col_cell_ids.get((fk.to_table, fk.to_col),
+                                  table_cell_ids.get(fk.to_table))
+
+        if src_id is None or tgt_id is None:
+            continue
+
+        edge_cell = ET.SubElement(parent, "mxCell")
+        edge_cell.set("id", str(cell_id))
+        cell_id += 1
+        edge_cell.set("value", f"{fk.from_col} → {fk.to_col}")
+        edge_cell.set(
+            "style",
+            "edgeStyle=entityRelationEdgeStyle;endArrow=ERzeroToMany;startArrow=ERmandOne;"
+            "strokeColor=#a78bfa;fontColor=#94a3b8;fontSize=10;exitX=1;exitY=0.5;"
+            "exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+        )
+        edge_cell.set("edge", "1")
+        edge_cell.set("source", str(src_id))
+        edge_cell.set("target", str(tgt_id))
+        edge_cell.set("parent", "1")
+        ET.SubElement(edge_cell, "mxGeometry", relative="1", **{"as": "geometry"})
+
+    # ── Serialise ─────────────────────────────────────────────────────────────
+    raw = ET.tostring(root, encoding="unicode")
+    pretty = minidom.parseString(raw).toprettyxml(indent="  ")
+    # minidom adds an XML declaration; keep it as it helps draw.io
+    xml_str = pretty
+
+    return {
+        "xml": xml_str,
+        "table_count": len(tables),
+        "relationship_count": len(foreign_keys),
+        "error": None,
+    }
