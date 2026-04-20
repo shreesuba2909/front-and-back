@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+:root {
+  /* EY Theme colors */
+  --bg: #ffffff;
+  --surface: #f6f6fa;
+  --card: #ededf2;
+  --border: #d0d0d8;
+  --accent: #ffe600;
+  --accent-soft: rgba(255, 230, 0, 0.15);
+  --accent-glow: rgba(255, 230, 0, 0.35);
+  --green: #168736;
+  --green-soft: rgba(22, 135, 54, 0.12);
+  --amber: #ff6d00;
+  --amber-soft: rgba(255, 109, 0, 0.12);
+  --red: #c4122f;
+  --red-soft: rgba(196, 18, 47, 0.12);
+  --purple: #6b3fa0;
+  --purple-soft: rgba(107, 63, 160, 0.12);
+  --text: #2e2e38;
+  --text-muted: #747480;
+  --text-dim: #9897a0;
+
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: var(--text);
+  background-color: var(--bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Reset and base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  line-height: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-size: 16px;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1.125rem; }
+
+p {
+  margin: 0;
+  color: var(--text);
+}
+
+a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #2e2e38;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+/* Form elements */
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid transparent;
+  border-radius: 0px; /* EY uses sharp corners */
+  padding: 0.75rem 1.5rem;
+  background-color: var(--accent);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: #f0d800;
+  border-color: transparent;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Secondary button variant */
+button.secondary {
+  background-color: transparent;
+  border: 2px solid var(--text);
+  color: var(--text);
+}
+
+button.secondary:hover {
+  background-color: var(--text);
+  color: var(--accent);
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0px;
+  padding: 0.75rem;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: border-color 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Utility classes */
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
+
+.bg-surface { background-color: var(--surface); }
+.bg-card { background-color: var(--card); }
+
+.border { border: 1px solid var(--border); }
+.rounded { border-radius: 0px; }
+.rounded-lg { border-radius: 0px; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+
+.m-0 { margin: 0; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.loading {
+  animation: spin 1s linear infinite;
+}
+
+/* Status states — EY-aligned colors */
+.error   { color: var(--red); }
+.success { color: var(--green); }
+.warning { color: var(--amber); }
+
+/* Focus styles */
+button:focus,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* No dark mode override — EY is always light */
